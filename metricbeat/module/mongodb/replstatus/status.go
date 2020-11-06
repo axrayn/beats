@@ -18,10 +18,11 @@
 package replstatus
 
 import (
+	"context"
 	"time"
 
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // MongoReplStatus cointains the status of the replica set from the point of view of the server that processed the command.
@@ -91,11 +92,11 @@ func (optime *OpTime) getTimeStamp() int64 {
 	return optime.Ts >> 32
 }
 
-func getReplicationStatus(mongoSession *mgo.Session) (*MongoReplStatus, error) {
-	db := mongoSession.DB("admin")
+func getReplicationStatus(mongoSession *mongo.Client) (*MongoReplStatus, error) {
+	db := mongoSession.Database("admin")
 
 	var replStatus MongoReplStatus
-	if err := db.Run(bson.M{"replSetGetStatus": 1}, &replStatus); err != nil {
+	if err := db.RunCommand(context.TODO(), bson.D{{Key: "replSetGetStatus", Value: 1}}).Decode(&replStatus); err != nil {
 		return nil, err
 	}
 

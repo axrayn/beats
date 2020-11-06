@@ -18,13 +18,15 @@
 package status
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/elastic/beats/v7/libbeat/common"
 	"github.com/elastic/beats/v7/metricbeat/mb"
 	"github.com/elastic/beats/v7/metricbeat/module/mongodb"
 
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -59,14 +61,14 @@ func New(base mb.BaseMetricSet) (mb.MetricSet, error) {
 func (m *MetricSet) Fetch(r mb.ReporterV2) error {
 
 	// instantiate direct connections to each of the configured Mongo hosts
-	mongoSession, err := mongodb.NewDirectSession(m.DialInfo)
+	mongoSession, err := mongodb.NewDirectSession(m.ClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "error creating new Session")
 	}
-	defer mongoSession.Close()
+	defer mongoSession.Disconnect(context.TODO())
 
 	result := map[string]interface{}{}
-	if err := mongoSession.DB("admin").Run(bson.D{{Name: "serverStatus", Value: 1}}, &result); err != nil {
+	if err := mongoSession.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "serverStatus", Value: 1}}).Decode(&result); err != nil {
 		return errors.Wrap(err, "failed to retrieve serverStatus")
 	}
 

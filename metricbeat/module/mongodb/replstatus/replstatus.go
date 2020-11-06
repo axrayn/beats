@@ -18,7 +18,7 @@
 package replstatus
 
 import (
-	"gopkg.in/mgo.v2"
+	"context"
 
 	"github.com/pkg/errors"
 
@@ -55,13 +55,11 @@ func New(base mb.BaseMetricSet) (mb.MetricSet, error) {
 // of an error set the Error field of mb.Event or simply call report.Error().
 func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 	// instantiate direct connections to each of the configured Mongo hosts
-	mongoSession, err := mongodb.NewDirectSession(m.DialInfo)
+	mongoSession, err := mongodb.NewDirectSession(m.ClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "error creating new Session")
 	}
-	defer mongoSession.Close()
-
-	mongoSession.SetMode(mgo.Strong, true)
+	defer mongoSession.Disconnect(context.TODO())
 
 	oplogInfo, err := getReplicationInfo(mongoSession)
 	if err != nil {

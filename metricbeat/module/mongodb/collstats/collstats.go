@@ -18,11 +18,15 @@
 package collstats
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/elastic/beats/v7/libbeat/common"
 	"github.com/elastic/beats/v7/metricbeat/mb"
 	"github.com/elastic/beats/v7/metricbeat/module/mongodb"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func init() {
@@ -56,15 +60,15 @@ func New(base mb.BaseMetricSet) (mb.MetricSet, error) {
 // of an error set the Error field of mb.Event or simply call report.Error().
 func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 	// instantiate direct connections to each of the configured Mongo hosts
-	mongoSession, err := mongodb.NewDirectSession(m.DialInfo)
+	mongoSession, err := mongodb.NewDirectSession(m.ClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "error creating new Session")
 	}
-	defer mongoSession.Close()
+	defer mongoSession.Disconnect(context.TODO())
 
 	result := common.MapStr{}
 
-	err = mongoSession.Run("top", &result)
+	err = mongoSession.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "top", Value: 1}}).Decode(&result)
 	if err != nil {
 		return errors.Wrap(err, "Error retrieving collection totals from Mongo instance")
 	}

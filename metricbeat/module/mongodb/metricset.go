@@ -18,10 +18,8 @@
 package mongodb
 
 import (
-	"crypto/tls"
-	"net"
-
-	"gopkg.in/mgo.v2"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	"github.com/elastic/beats/v7/libbeat/common/transport/tlscommon"
 	"github.com/elastic/beats/v7/libbeat/logp"
@@ -36,7 +34,7 @@ type ModuleConfig struct {
 // MetricSet type defines all fields of the MetricSet
 type MetricSet struct {
 	mb.BaseMetricSet
-	DialInfo *mgo.DialInfo
+	ClientOptions *options.ClientOptions
 }
 
 // NewMetricSet creates a new instance of the MetricSet
@@ -47,30 +45,19 @@ func NewMetricSet(base mb.BaseMetricSet) (*MetricSet, error) {
 		return nil, err
 	}
 
-	dialInfo, err := mgo.ParseURL(base.HostData().URI)
+	logp.Info("URI: %s", base.HostData().URI)
+
+	dialInfo := options.Client().ApplyURI(base.HostData().URI)
 	if err != nil {
 		return nil, err
 	}
-	dialInfo.Timeout = base.Module().Config().Timeout
-
-	if config.TLS.IsEnabled() {
-		tlsConfig, err := tlscommon.LoadTLSConfig(config.TLS)
-		if err != nil {
-			return nil, err
-		}
-
-		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			hostname, _, err := net.SplitHostPort(base.HostData().Host)
-			if err != nil {
-				logp.Warn("Failed to obtain hostname from `%s`: %s", hostname, err)
-				hostname = ""
-			}
-			return tls.Dial("tcp", addr.String(), tlsConfig.BuildModuleConfig(hostname))
-		}
-	}
+	dialInfo.SetConnectTimeout(base.Module().Config().Timeout)
+	dialInfo.SetDirect(true)
+	dialInfo.SetReadPreference(readpref.Nearest())
+	dialInfo.SetAppName("metricbeat")
 
 	return &MetricSet{
 		BaseMetricSet: base,
-		DialInfo:      dialInfo,
+		ClientOptions: dialInfo,
 	}, nil
 }

@@ -18,12 +18,16 @@
 package dbstats
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/elastic/beats/v7/libbeat/common"
 	"github.com/elastic/beats/v7/libbeat/logp"
 	"github.com/elastic/beats/v7/metricbeat/mb"
 	"github.com/elastic/beats/v7/metricbeat/module/mongodb"
+
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 var logger = logp.NewLogger("mongodb.dbstats")
@@ -61,14 +65,14 @@ func New(base mb.BaseMetricSet) (mb.MetricSet, error) {
 // of an error set the Error field of mb.Event or simply call report.Error().
 func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 	// instantiate direct connections to each of the configured Mongo hosts
-	mongoSession, err := mongodb.NewDirectSession(m.DialInfo)
+	mongoSession, err := mongodb.NewDirectSession(m.ClientOptions)
 	if err != nil {
 		return errors.Wrap(err, "error creating new Session")
 	}
-	defer mongoSession.Close()
+	defer mongoSession.Disconnect(context.TODO())
 
 	// Get the list of databases names, which we'll use to call db.stats() on each
-	dbNames, err := mongoSession.DatabaseNames()
+	dbNames, err := mongoSession.ListDatabaseNames(context.TODO(), bson.D{{Key: "empty", Value: false}})
 	if err != nil {
 		return errors.Wrap(err, "Error retrieving database names from Mongo instance")
 	}
@@ -76,11 +80,11 @@ func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 	// for each database, call db.stats() and append to events
 	totalEvents := 0
 	for _, dbName := range dbNames {
-		db := mongoSession.DB(dbName)
+		db := mongoSession.Database(dbName)
 
 		result := common.MapStr{}
 
-		err := db.Run("dbStats", &result)
+		err := db.RunCommand(context.TODO(), bson.M{"dbStats": 1}).Decode(&result)
 		if err != nil {
 			err = errors.Wrapf(err, "Failed to retrieve stats for db %s", dbName)
 			reporter.Error(err)

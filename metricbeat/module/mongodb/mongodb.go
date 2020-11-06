@@ -18,6 +18,7 @@
 package mongodb
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -26,6 +27,9 @@ import (
 	"github.com/elastic/beats/v7/metricbeat/mb"
 	"github.com/elastic/beats/v7/metricbeat/mb/parse"
 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/connstring"
 	mgo "gopkg.in/mgo.v2"
 )
 
@@ -85,22 +89,42 @@ func ParseURL(module mb.Module, host string) (mb.HostData, error) {
 
 // NewDirectSession estbalishes direct connections with a list of hosts. It uses the supplied
 // dialInfo parameter as a template for establishing more direct connections
-func NewDirectSession(dialInfo *mgo.DialInfo) (*mgo.Session, error) {
+func NewDirectSession(dialInfo *options.ClientOptions) (*mongo.Client, error) {
 	// make a copy
 	nodeDialInfo := *dialInfo
-	nodeDialInfo.Direct = true
-	nodeDialInfo.FailFast = true
 
-	logp.Debug("mongodb", "Connecting to MongoDB node at %v", nodeDialInfo.Addrs)
+	logp.Debug("mongodb", "Connecting to MongoDB node at %v", nodeDialInfo.Hosts)
 
-	session, err := mgo.DialWithInfo(&nodeDialInfo)
+	client, err := mongo.NewClient(&nodeDialInfo)
 	if err != nil {
-		logp.Err("Error establishing direct connection to mongo node at %v. Error output: %s", nodeDialInfo.Addrs, err.Error())
+		logp.Err("Error establishing direct connection to mongo node at %v. Error output: %s", nodeDialInfo.Hosts, err.Error())
 		return nil, err
 	}
 
-	// Relax consistency mode so reading from a secondary is allowed
-	session.SetMode(mgo.Monotonic, true)
+	err = client.Connect(context.Background())
+	if err != nil {
+		logp.Err("Error establishing direct connection to mongo node at %v. Error output: %s", nodeDialInfo.Hosts, err.Error())
+		return nil, err
+	}
 
-	return session, nil
+	return client, nil
+}
+
+// SanitiseHost function to remove the username/password options from the host entry
+func SanitiseHost(uri string) string {
+	if strings.HasPrefix(uri, "mongodb://") && strings.Contains(uri, "@") {
+		connStr, err := connstring.Parse(uri)
+		if err != nil {
+			logp.Err("Cannot parse mongodb server url: %s", err)
+			return "unknown/error"
+		}
+
+		if connStr.Username != "" {
+			uri = strings.Replace(uri, connStr.Username, "****", 1)
+		}
+		if connStr.Password != "" {
+			uri = strings.Replace(uri, connStr.Password, "****", 1)
+		}
+	}
+	return uri
 }

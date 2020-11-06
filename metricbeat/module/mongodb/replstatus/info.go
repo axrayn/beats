@@ -18,10 +18,13 @@
 package replstatus
 
 import (
+	"context"
 	"errors"
 
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type oplogInfo struct {
@@ -40,31 +43,31 @@ type CollSize struct {
 
 const oplogCol = "oplog.rs"
 
-func getReplicationInfo(mongoSession *mgo.Session) (*oplogInfo, error) {
+func getReplicationInfo(mongoSession *mongo.Client) (*oplogInfo, error) {
 	// get oplog.rs collection
-	db := mongoSession.DB("local")
-	if collections, err := db.CollectionNames(); err != nil || !contains(collections, oplogCol) {
+	db := mongoSession.Database("local")
+	if collections, err := db.ListCollectionNames(context.TODO(), bson.D{{Key: "empty", Value: false}}); err != nil || !contains(collections, oplogCol) {
 		if err == nil {
 			err = errors.New("collection oplog.rs was not found")
 		}
 
 		return nil, err
 	}
-	collection := db.C(oplogCol)
+	collection := db.Collection(oplogCol)
 
 	// get oplog size
 	var oplogSize CollSize
-	if err := db.Run(bson.D{{Name: "collStats", Value: oplogCol}}, &oplogSize); err != nil {
+	if err := db.RunCommand(context.TODO(), bson.D{{Key: "collStats", Value: oplogCol}}).Decode(&oplogSize); err != nil {
 		return nil, err
 	}
 
 	// get first and last items in the oplog
-	firstTs, err := getOpTimestamp(collection, "$natural")
+	firstTs, err := getOpTimestamp(collection, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	lastTs, err := getOpTimestamp(collection, "-$natural")
+	lastTs, err := getOpTimestamp(collection, -1)
 	if err != nil {
 		return nil, err
 	}
@@ -80,15 +83,14 @@ func getReplicationInfo(mongoSession *mgo.Session) (*oplogInfo, error) {
 	}, nil
 }
 
-func getOpTimestamp(collection *mgo.Collection, sort string) (int64, error) {
-	iter := collection.Find(nil).Sort(sort).Iter()
-
-	var opTime OpTime
-	if !iter.Next(&opTime) {
-		return 0, errors.New("objects not found in local.oplog.rs -- Is this a new and empty db instance?")
+func getOpTimestamp(collection *mongo.Collection, sort int) (int64, error) {
+	var result struct {
+		Timestamp primitive.Timestamp `bson:"ts"` // See: https://docs.mongodb.com/manual/reference/bson-types/#timestamps
 	}
 
-	return opTime.getTimeStamp(), nil
+	findOptions := options.FindOne().SetSort(bson.D{{Key: "$natural", Value: sort}})
+	err := collection.FindOne(context.TODO(), nil, findOptions).Decode(&result)
+	return int64(result.Timestamp.T), err
 }
 
 func contains(s []string, x string) bool {
