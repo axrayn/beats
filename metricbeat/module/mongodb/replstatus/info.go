@@ -46,7 +46,7 @@ const oplogCol = "oplog.rs"
 func getReplicationInfo(mongoSession *mongo.Client) (*oplogInfo, error) {
 	// get oplog.rs collection
 	db := mongoSession.Database("local")
-	if collections, err := db.ListCollectionNames(context.TODO(), bson.D{{Key: "empty", Value: false}}); err != nil || !contains(collections, oplogCol) {
+	if collections, err := db.ListCollectionNames(context.TODO(), bson.M{}); err != nil || !contains(collections, oplogCol) {
 		if err == nil {
 			err = errors.New("collection oplog.rs was not found")
 		}
@@ -57,7 +57,7 @@ func getReplicationInfo(mongoSession *mongo.Client) (*oplogInfo, error) {
 
 	// get oplog size
 	var oplogSize CollSize
-	if err := db.RunCommand(context.TODO(), bson.D{{Key: "collStats", Value: oplogCol}}).Decode(&oplogSize); err != nil {
+	if err := db.RunCommand(context.TODO(), bson.M{"collStats": "oplog.rs"}).Decode(&oplogSize); err != nil {
 		return nil, err
 	}
 
@@ -88,8 +88,8 @@ func getOpTimestamp(collection *mongo.Collection, sort int) (int64, error) {
 		Timestamp primitive.Timestamp `bson:"ts"` // See: https://docs.mongodb.com/manual/reference/bson-types/#timestamps
 	}
 
-	findOptions := options.FindOne().SetSort(bson.D{{Key: "$natural", Value: sort}})
-	err := collection.FindOne(context.TODO(), nil, findOptions).Decode(&result)
+	findOptions := options.FindOne().SetSort(bson.M{"$natural": sort})
+	err := collection.FindOne(context.TODO(), bson.M{}, findOptions).Decode(&result)
 	return int64(result.Timestamp.T), err
 }
 

@@ -72,7 +72,9 @@ func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 	defer mongoSession.Disconnect(context.TODO())
 
 	// Get the list of databases names, which we'll use to call db.stats() on each
-	dbNames, err := mongoSession.ListDatabaseNames(context.TODO(), bson.D{{Key: "empty", Value: false}})
+	//dbNames, err := mongoSession.ListDatabaseNames(context.TODO(), bson.D{{Key: "empty", Value: false}})
+	dbNames, err := mongoSession.ListDatabaseNames(context.TODO(), bson.M{})
+
 	if err != nil {
 		return errors.Wrap(err, "Error retrieving database names from Mongo instance")
 	}

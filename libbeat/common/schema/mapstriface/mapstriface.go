@@ -209,6 +209,8 @@ func toInteger(key string, data map[string]interface{}) (interface{}, error) {
 	switch emptyIface.(type) {
 	case int64:
 		return emptyIface.(int64), nil
+	case int32:
+		return int64(emptyIface.(int32)), nil
 	case int:
 		return int64(emptyIface.(int)), nil
 	case float64:
@@ -247,6 +249,8 @@ func toFloat(key string, data map[string]interface{}) (interface{}, error) {
 		return emptyIface.(float64), nil
 	case int:
 		return float64(emptyIface.(int)), nil
+	case int32:
+		return float64(emptyIface.(int32)), nil
 	case int64:
 		return float64(emptyIface.(int64)), nil
 	case json.Number:

@@ -68,7 +68,7 @@ func (m *MetricSet) Fetch(r mb.ReporterV2) error {
 	defer mongoSession.Disconnect(context.TODO())
 
 	result := map[string]interface{}{}
-	if err := mongoSession.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "serverStatus", Value: 1}}).Decode(&result); err != nil {
+	if err := mongoSession.Database("admin").RunCommand(context.TODO(), bson.M{"serverStatus": 1}).Decode(&result); err != nil {
 		return errors.Wrap(err, "failed to retrieve serverStatus")
 	}
 

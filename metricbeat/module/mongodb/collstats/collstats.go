@@ -68,7 +68,7 @@ func (m *MetricSet) Fetch(reporter mb.ReporterV2) error {
 
 	result := common.MapStr{}
 
-	err = mongoSession.Database("admin").RunCommand(context.TODO(), bson.D{{Key: "top", Value: 1}}).Decode(&result)
+	err = mongoSession.Database("admin").RunCommand(context.TODO(), bson.M{"top": 1}).Decode(&result)
 	if err != nil {
 		return errors.Wrap(err, "Error retrieving collection totals from Mongo instance")
 	}

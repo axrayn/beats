@@ -22,7 +22,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	"github.com/elastic/beats/v7/libbeat/common/transport/tlscommon"
-	"github.com/elastic/beats/v7/libbeat/logp"
 	"github.com/elastic/beats/v7/metricbeat/mb"
 )
 
@@ -45,14 +44,12 @@ func NewMetricSet(base mb.BaseMetricSet) (*MetricSet, error) {
 		return nil, err
 	}
 
-	logp.Info("URI: %s", base.HostData().URI)
-
 	dialInfo := options.Client().ApplyURI(base.HostData().URI)
 	if err != nil {
 		return nil, err
 	}
 	dialInfo.SetConnectTimeout(base.Module().Config().Timeout)
-	dialInfo.SetDirect(true)
+	dialInfo.SetDirect(false)
 	dialInfo.SetReadPreference(readpref.Nearest())
 	dialInfo.SetAppName("metricbeat")
 

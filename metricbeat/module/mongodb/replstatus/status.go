@@ -21,7 +21,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/elastic/beats/v7/libbeat/logp"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -43,23 +45,24 @@ type MongoReplStatus struct {
 
 // Member provides information about a member in the replica set.
 type Member struct {
-	Health        bool      `bson:"health"`
-	Name          string    `bson:"name"`
-	State         int       `bson:"state"`
-	StateStr      string    `bson:"stateStr"`
-	Uptime        int       `bson:"uptime"`
-	OpTime        OpTime    `bson:"optime"`
-	OpTimeDate    time.Time `bson:"optimeDate"`
-	ElectionTime  int64     `bson:"electionTime"`
-	ElectionDate  time.Time `bson:"electaionDate"`
-	ConfigVersion int       `bson:"configVersion"`
-	Self          bool      `bson:"self"`
+	Health        bool                `bson:"health"`
+	Name          string              `bson:"name"`
+	State         int                 `bson:"state"`
+	StateStr      string              `bson:"stateStr"`
+	Uptime        int                 `bson:"uptime"`
+	OpTime        OpTime              `bson:"optime"`
+	OpTimeDate    time.Time           `bson:"optimeDate"`
+	ElectionTime  primitive.Timestamp `bson:"electionTime"`
+	ElectionDate  time.Time           `bson:"electaionDate"`
+	ConfigVersion int                 `bson:"configVersion"`
+	Self          bool                `bson:"self"`
 }
 
 // OpTime holds information regarding the operation from the operation log
 type OpTime struct {
-	Ts int64 `bson:"ts"` // The timestamp of the last operation applied to this member of the replica set
-	T  int   `bson:"t"`  // The term in which the last applied operation was originally generated on the primary.
+	Ts primitive.Timestamp `bson:"ts"` // See: https://docs.mongodb.com/manual/reference/bson-types/#timestamps
+	//Ts int64 `bson:"ts"` // The timestamp of the last operation applied to this member of the replica set
+	T int `bson:"t"` // The term in which the last applied operation was originally generated on the primary.
 }
 
 // MemberState shows the state of a member in the replica set
@@ -89,14 +92,16 @@ const (
 )
 
 func (optime *OpTime) getTimeStamp() int64 {
-	return optime.Ts >> 32
+	//return optime.Ts >> 32
+	return int64(optime.Ts.T)
 }
 
 func getReplicationStatus(mongoSession *mongo.Client) (*MongoReplStatus, error) {
 	db := mongoSession.Database("admin")
 
 	var replStatus MongoReplStatus
-	if err := db.RunCommand(context.TODO(), bson.D{{Key: "replSetGetStatus", Value: 1}}).Decode(&replStatus); err != nil {
+	if err := db.RunCommand(context.TODO(), bson.M{"replSetGetStatus": 1}).Decode(&replStatus); err != nil {
+		logp.Info("mongodb-ts", "Timestamp: %+v", replStatus)
 		return nil, err
 	}
 
