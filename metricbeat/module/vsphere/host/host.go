@@ -123,6 +123,13 @@ func (m *MetricSet) Fetch(ctx context.Context, reporter mb.ReporterV2) error {
 		event["name"] = hs.Summary.Config.Name
 		event.Put("cpu.used.mhz", hs.Summary.QuickStats.OverallCpuUsage)
 		event.Put("memory.used.bytes", int64(hs.Summary.QuickStats.OverallMemoryUsage)*1024*1024)
+                event.Put("overall.status", hs.Summary.OverallStatus)
+                event.Put("reboot.required", hs.Summary.RebootRequired)
+                event.Put("product.name", hs.Summary.Config.Product.Name)
+                event.Put("product.version", hs.Summary.Config.Product.Version)
+                event.Put("product.build", hs.Summary.Config.Product.Build)
+                event.Put("vmotion.enabled", hs.Summary.Config.VmotionEnabled)
+
 
 		if hs.Summary.Hardware != nil {
 			totalCPU := int64(hs.Summary.Hardware.CpuMhz) * int64(hs.Summary.Hardware.NumCpuCores)
@@ -130,6 +137,15 @@ func (m *MetricSet) Fetch(ctx context.Context, reporter mb.ReporterV2) error {
 			event.Put("cpu.free.mhz", int64(totalCPU)-int64(hs.Summary.QuickStats.OverallCpuUsage))
 			event.Put("memory.free.bytes", int64(hs.Summary.Hardware.MemorySize)-(int64(hs.Summary.QuickStats.OverallMemoryUsage)*1024*1024))
 			event.Put("memory.total.bytes", hs.Summary.Hardware.MemorySize)
+                        event.Put("hardware.vendor", hs.Summary.Hardware.Vendor)
+                        event.Put("hardware.model", hs.Summary.Hardware.Model)
+                        event.Put("hardware.cpu.model", hs.Summary.Hardware.CpuModel)
+                        event.Put("hardware.cpu.pkgs", int64(hs.Summary.Hardware.NumCpuPkgs))
+                        event.Put("hardware.cpu.cores", int64(hs.Summary.Hardware.NumCpuCores))
+                        event.Put("hardware.cpu.threads", int64(hs.Summary.Hardware.NumCpuThreads))
+                        event.Put("hardware.nics", int64(hs.Summary.Hardware.NumNics))
+                        event.Put("hardware.hbas", int64(hs.Summary.Hardware.NumHBAs))
+
 		} else {
 			m.Logger().Debug("'Hardware' or 'Summary' data not found. This is either a parsing error from vsphere library, an error trying to reach host/guest or incomplete information returned from host/guest")
 		}
@@ -144,6 +160,14 @@ func (m *MetricSet) Fetch(ctx context.Context, reporter mb.ReporterV2) error {
 				}
 			}
 		}
+                if hs.Summary.Runtime != nil {
+                    event.Put("runtime.connection_state", hs.Summary.Runtime.ConnectionState)
+                    event.Put("runtime.power_state", hs.Summary.Runtime.PowerState)
+                    event.Put("runtime.standby_mode", hs.Summary.Runtime.StandbyMode)
+                    event.Put("runtime.maintenance_mode", hs.Summary.Runtime.InMaintenanceMode)
+                    event.Put("runtime.quarantine_mode", hs.Summary.Runtime.InQuarantineMode)
+                    event.Put("runtime.boottime", hs.Summary.Runtime.BootTime)
+                }
 		reporter.Event(mb.Event{
 			MetricSetFields: event,
 		})

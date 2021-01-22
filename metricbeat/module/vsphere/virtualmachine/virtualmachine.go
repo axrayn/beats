@@ -137,12 +137,17 @@ func (m *MetricSet) Fetch(ctx context.Context, reporter mb.ReporterV2) error {
 		event := common.MapStr{
 			"name": vm.Summary.Config.Name,
 			"os":   vm.Summary.Config.GuestFullName,
+                        "uptime": int64(vm.Summary.QuickStats.UptimeSeconds),
+                        "parent": vm.Summary.Runtime.Host,
 			"cpu": common.MapStr{
 				"used": common.MapStr{
 					"mhz": vm.Summary.QuickStats.OverallCpuUsage,
 				},
+                                "reservation": int64(vm.Summary.Config.CpuReservation),
+                                "count": int64(vm.Summary.Config.NumCpu),
 			},
 			"memory": common.MapStr{
+                                "reservation": int64(vm.Summary.Config.MemoryReservation),
 				"used": common.MapStr{
 					"guest": common.MapStr{
 						"bytes": (int64(vm.Summary.QuickStats.GuestMemoryUsage) * 1024 * 1024),

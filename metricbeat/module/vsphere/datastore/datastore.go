@@ -119,11 +119,14 @@ func (m *MetricSet) Fetch(ctx context.Context, reporter mb.ReporterV2) error {
 
 		event := common.MapStr{
 			"name":   ds.Summary.Name,
+                        "accessible": ds.Summary.Accessible,
+                        "maintenance": ds.Summary.MaintenanceMode,
 			"fstype": ds.Summary.Type,
 			"capacity": common.MapStr{
 				"total": common.MapStr{
 					"bytes": ds.Summary.Capacity,
 				},
+                                "uncommitted": ds.Summary.Uncommitted,
 				"free": common.MapStr{
 					"bytes": ds.Summary.FreeSpace,
 				},
