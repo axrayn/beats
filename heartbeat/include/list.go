@@ -25,6 +25,7 @@ import (
 	m1 "github.com/elastic/beats/v7/heartbeat/security"
 
 	// Import packages that perform 'func init()'.
+	_ "github.com/elastic/beats/v7/heartbeat/monitors/active/dns"
 	_ "github.com/elastic/beats/v7/heartbeat/monitors/active/http"
 	_ "github.com/elastic/beats/v7/heartbeat/monitors/active/icmp"
 	_ "github.com/elastic/beats/v7/heartbeat/monitors/active/tcp"
