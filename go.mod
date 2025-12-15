@@ -235,6 +235,7 @@ require (
 	github.com/cilium/ebpf v0.19.0
 	github.com/elastic/gokrb5/v8 v8.0.0-20251105095404-23cc45e6a102
 	github.com/forensicanalysis/fslib v0.15.2
+	github.com/gosnmp/gosnmp v1.42.1
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	go.opentelemetry.io/collector/client v1.45.0

@@ -1,0 +1,21 @@
+- module: snmptrap
+  # All traps
+  trap:
+    enabled: true
+    host: 0.0.0.0:9162
+    community_strings:
+      - "notpublic"
+    v3_users:
+      notreal:
+        username: "notreal"
+        authproto: "sha"
+        authpass: "authpass123"
+        privproto: "aes"
+        privpass: "privpass123"
+        engineid: "0x80001f88800a0462333f24236900000000"
+    
+
+
+    # Set custom paths for the log files. If left empty,
+    # Filebeat will choose the paths depending on your OS.
+    #var.paths:

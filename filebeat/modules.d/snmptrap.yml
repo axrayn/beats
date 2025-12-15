@@ -1,0 +1,17 @@
+# Module: snmptrap
+# Docs: https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-module-snmptrap.html
+
+- module: snmptrap
+  trap:
+    enabled: true
+    var.host: 0.0.0.0:9162
+    var.community_strings:
+      - "notpublic"
+    var.v3_users:
+      notreal:
+        username: "notreal"
+        authproto: "sha"
+        authpass: "authpass123"
+        privproto: "aes"
+        privpass: "privpass123"
+        engineid: "0x80001f88800a0462333f24236900000000"

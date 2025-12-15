@@ -1,0 +1,14 @@
+module_version: 1.0
+
+var:
+  - name: host
+    default: 0.0.0.0:162
+  - name: input
+    default: snmptrap
+  - name: community_strings
+    default: ["public"]
+  - name: engine_id
+    default: "0x80001f88800a0462333f24236900000000"
+
+ingest_pipeline: ingest/pipeline.json
+input: config/trap.yml

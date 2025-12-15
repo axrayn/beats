@@ -1,0 +1,9 @@
+- key: snmptrap
+  title: "snmptrap"
+  description: >
+    snmptrap Module
+  fields:
+    - name: snmptrap
+      type: group
+      description: >
+      fields:

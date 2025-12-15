@@ -1,0 +1,25 @@
+type: snmptrap
+udp:
+host: "{{.host}}"
+community_strings:
+{{ range $i, $community_string := .community_strings }}
+  - {{$community_string}}
+{{ end }} 
+
+v3_users:
+{{- range $username, $user := .v3_users }}
+  {{$username}}:
+    username: "{{$user.username}}"
+    authproto: "{{$user.authproto}}"
+    authpass: "{{$user.authpass}}"
+    privproto: "{{$user.privproto}}"
+    privpass: "{{$user.privpass}}"
+    engineid: "{{$user.engineid}}"
+{{- end }}
+
+processors:
+  - add_locale: ~
+  - add_fields:
+      target: ''
+      fields:
+        ecs.version: 1.12.0
