@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// This file was contributed to by generative AI
+
 package filestream
 
 import (
@@ -530,10 +532,10 @@ func TestFileScanner(t *testing.T) {
 	require.NoError(t, err)
 
 	cases := []struct {
-		name    string
-		cfgStr  string
-		gzip    bool
-		expDesc map[string]loginp.FileDescriptor
+		name        string
+		cfgStr      string
+		compression string
+		expDesc     map[string]loginp.FileDescriptor
 	}{
 		{
 			name: "returns all files when no limits, not including the repeated symlink",
@@ -823,8 +825,8 @@ scanner:
 			},
 		},
 		{
-			name: "returns all files except too small to fingerprint",
-			gzip: true,
+			name:        "returns all files except too small to fingerprint",
+			compression: CompressionAuto,
 			cfgStr: `
 scanner:
   symlinks: true
@@ -929,7 +931,7 @@ scanner:
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := logptest.NewTestingLogger(t, "")
-			s := createScannerWithConfig(t, logger, paths, tc.cfgStr, tc.gzip)
+			s := createScannerWithConfig(t, logger, paths, tc.cfgStr, tc.compression)
 			requireEqualFiles(t, tc.expDesc, s.GetFiles())
 		})
 	}
@@ -946,7 +948,7 @@ scanner:
 
 		// the glob for the very small files
 		paths := []string{filepath.Join(dir, undersizedGlob)}
-		s := createScannerWithConfig(t, logger, paths, cfgStr, false)
+		s := createScannerWithConfig(t, logger, paths, cfgStr, CompressionNone)
 		files := s.GetFiles()
 		require.Empty(t, files)
 
@@ -995,7 +997,7 @@ scanner:
 			logptest.NewTestingLogger(t, ""),
 			paths,
 			cfg,
-			false,
+			CompressionNone,
 			false,
 			mustPathIdentifier(false),
 			mustSourceIdentifier("foo-id"),
@@ -1039,7 +1041,7 @@ func BenchmarkGetFiles(b *testing.B) {
 			Enabled: false,
 		},
 	}
-	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, false)
+	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, CompressionNone)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
@@ -1067,7 +1069,7 @@ func BenchmarkGetFilesWithFingerprint(b *testing.B) {
 		},
 	}
 
-	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, false)
+	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, CompressionNone)
 	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
@@ -1092,7 +1094,7 @@ func createWatcherWithConfig(t *testing.T, logger *logp.Logger, paths []string, 
 		logger,
 		paths,
 		tmpCfg.Scaner,
-		false,
+		CompressionNone,
 		false,
 		mustPathIdentifier(false),
 		mustSourceIdentifier("foo-id"),
@@ -1102,7 +1104,7 @@ func createWatcherWithConfig(t *testing.T, logger *logp.Logger, paths []string, 
 	return fw
 }
 
-func createScannerWithConfig(t *testing.T, logger *logp.Logger, paths []string, cfgStr string, gzipAllowed bool) loginp.FSScanner {
+func createScannerWithConfig(t *testing.T, logger *logp.Logger, paths []string, cfgStr string, compression string) loginp.FSScanner {
 	cfg, err := conf.NewConfigWithYAML([]byte(cfgStr), cfgStr)
 	require.NoError(t, err)
 
@@ -1113,7 +1115,7 @@ func createScannerWithConfig(t *testing.T, logger *logp.Logger, paths []string, 
 	config := defaultFileWatcherConfig()
 	err = ns.Config().Unpack(&config)
 	require.NoError(t, err)
-	scanner, err := newFileScanner(logger, paths, config.Scanner, gzipAllowed)
+	scanner, err := newFileScanner(logger, paths, config.Scanner, compression)
 	require.NoError(t, err)
 
 	return scanner
@@ -1154,6 +1156,37 @@ func filenames(m map[string]loginp.FileDescriptor) (result string) {
 	return result
 }
 
+func TestToFileDescriptor_TooSmallFile_NoFileOpen(t *testing.T) {
+	dir := t.TempDir()
+	filename := filepath.Join(dir, "small.log")
+
+	fingerprintLength := int64(1024)
+
+	err := os.WriteFile(filename, []byte("a small file"), 0644)
+	require.NoError(t, err, "failed to create test file")
+
+	cfg := fileScannerConfig{
+		Fingerprint: fingerprintConfig{
+			Enabled: true,
+			Offset:  0,
+			Length:  fingerprintLength,
+		},
+	}
+
+	s, err := newFileScanner(logp.NewNopLogger(), []string{filename}, cfg, CompressionNone)
+	require.NoError(t, err, "failed to create scanner")
+	it, err := s.getIngestTarget(filename)
+	require.NoError(t, err, "getIngestTarget should succeed")
+
+	// Remove read permissions - if file is opened, we'll get permission denied
+	err = os.Chmod(filename, 0000)
+	require.NoError(t, err, "failed to chmod test file")
+
+	_, err = s.toFileDescriptor(&it)
+	require.ErrorIs(t, err, errFileTooSmall,
+		"expected errFileTooSmall, it probably tried to open the file")
+}
+
 func BenchmarkToFileDescriptor(b *testing.B) {
 	dir := b.TempDir()
 	basename := "created.log"
@@ -1170,7 +1203,7 @@ func BenchmarkToFileDescriptor(b *testing.B) {
 		},
 	}
 
-	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, false)
+	s, err := newFileScanner(logp.NewNopLogger(), paths, cfg, CompressionNone)
 	require.NoError(b, err)
 
 	it, err := s.getIngestTarget(filename)

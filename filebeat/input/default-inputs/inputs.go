@@ -47,6 +47,7 @@ func genericInputs(log *logp.Logger, components statestore.States) []v2.Plugin {
 		udp.Plugin(),
 		snmptrap.Plugin(),
 		unix.Plugin(),
-		logv2.PluginV2(log, components),
+		logv2.LogPluginV2(log, components),
+		logv2.ContainerPluginV2(log, components),
 	}
 }
